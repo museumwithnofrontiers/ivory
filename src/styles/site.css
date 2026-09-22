@@ -1,0 +1,10 @@
+/*
+ * This website's own content styles: the palette its views reference and the
+ * building blocks they share (panels, lists, forms, prose).
+ *
+ * Page chrome — header, banner, navigation, footer — is themed through
+ * theme/tokens.css instead. Keep the two apart: tokens.css is read by
+ * @museumwnf/viewer-layout, this file only by the views in src/views/.
+ *
+ * Starts empty on purpose. Nothing here is required for the website to run.
+ */
