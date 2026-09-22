@@ -1,5 +1,5 @@
 {
-  "name": "__DATASET__",
+  "name": "ivory",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,11 +12,11 @@
     "lint": "eslint ."
   },
   "viewerI18n": {
-    "class": "__SITE_CLASS__",
-    "namespace": "__SITE_NAMESPACE__"
+    "class": "gallery",
+    "namespace": "ivory"
   },
   "dependencies": {
-    "@museumwnf/__DATASET__-data": "0.0.0-REPLACE-ME",
+    "@museumwnf/ivory-data": "^1.0.1",
     "@museumwnf/viewer-core": "^2.0.0",
     "@museumwnf/viewer-i18n": "^4.0.0",
     "@museumwnf/viewer-layout": "^2.15.1",

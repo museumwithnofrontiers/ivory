@@ -1,5 +1,5 @@
 import { createStandardViewer } from '@museumwnf/viewer-core'
-import { catalogues as sharedTexts } from '@museumwnf/viewer-i18n/__SITE_CLASS__'
+import { catalogues as sharedTexts } from '@museumwnf/viewer-i18n/gallery'
 import '@museumwnf/viewer-layout/style.css'
 import '../theme/tokens.css'
 import '../theme/overrides.css'

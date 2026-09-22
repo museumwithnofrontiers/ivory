@@ -3,7 +3,7 @@ import { loadEntities, mergeMessages } from '@museumwnf/viewer-core'
 import {
   checkOfferedLanguages, checkRoutes, checkSectionMeta, checkTextsRendered, mountSite,
 } from '@museumwnf/viewer-core/testing'
-import { catalogues as sharedTexts } from '@museumwnf/viewer-i18n/__SITE_CLASS__'
+import { catalogues as sharedTexts } from '@museumwnf/viewer-i18n/gallery'
 import ownTexts from '../locales/en.json'
 import config from '../src/dataset.config.js'
 
@@ -28,7 +28,7 @@ describe('website smoke test', () => {
     // The one thing this template's own test checks that the shared kit
     // cannot: the placeholder site name renders in the header lockup, the
     // #brand slot SiteShell.vue fills.
-    expect(host.textContent).toContain('__DATASET__')
+    expect(host.textContent).toContain('ivory')
 
     app.unmount()
   }, 20000)
@@ -115,7 +115,7 @@ describe('website smoke test', () => {
     expect(host.textContent).toContain('Skip to content')
     // Nothing rendered as a bare entry name, which is what a missing text
     // looks like — there is no exception to throw for one.
-    expect(checkTextsRendered(host, { namespaces: ['__SITE_NAMESPACE__', 'core', 'layout'] })).toEqual([])
+    expect(checkTextsRendered(host, { namespaces: ['ivory', 'core', 'layout'] })).toEqual([])
 
     app.unmount()
   }, 20000)
