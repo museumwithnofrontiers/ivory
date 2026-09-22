@@ -14,7 +14,7 @@ import { defineConfig } from 'vite'
 // Filed as metanull/viewer-core#86. `tests/smoke.test.js` imports the same
 // barrel safely, because Vitest loads test files through its own transform
 // pipeline rather than plain Node. Switch this back to
-// `...defineViewerConfig({ dataPackage: '@museumwnf/__DATASET__-data', plugins: [vue()] })`
+// `...defineViewerConfig({ dataPackage: '@museumwnf/ivory-data', plugins: [vue()] })`
 // once the package exposes it somewhere that does not pull in `.vue`.
 export default defineConfig({
   // GitHub Pages serves the site under /<repo>/; the deploy workflow sets
@@ -25,7 +25,7 @@ export default defineConfig({
     alias: {
       // viewer-core reads every JSON of the data package through this alias.
       '@inventory-data': fileURLToPath(
-        new URL('./node_modules/@museumwnf/__DATASET__-data', import.meta.url),
+        new URL('./node_modules/@museumwnf/ivory-data', import.meta.url),
       ),
     },
   },
