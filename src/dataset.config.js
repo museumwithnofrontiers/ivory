@@ -1,38 +1,41 @@
-import {
-  languageLabels, mwnfLinks, offeredLanguages, sectionMeta, useDataPackage,
-} from '@museumwnf/viewer-core'
-import {
-  CatalogueResultsView, HomeView, RecordView, TextPageView,
-} from '@museumwnf/viewer-layout/views'
+import { languageLabels, loadEntities, mwnfLinks, offeredLanguages, sectionMeta, useDataPackage } from '@museumwnf/viewer-core'
+import { standardRoutes } from '@museumwnf/viewer-layout/dxa'
 import SiteShell from './SiteShell.vue'
-import { catalogue, sheet } from './composables/useCatalogue.js'
+import { itemFromUidPath, partnerFromKey } from './composables/gallery.js'
 
 // The whole declaration of this website. Before it mounts, the website reads
 // nothing from its package but the manifest: the languages it offers, their
-// labels and its name come from `manifest.site`, and every record is loaded by
-// the route that reads it. Nothing else in `src/` imports `@inventory-data`.
+// labels and its name come from `manifest.site`, and every record is loaded
+// by the route that reads it.
 
 const { manifest } = useDataPackage()
 
-// The languages the package declares for this site, kept where the item
-// translations actually carry them. Pass `{ declared: [...] }` to offer fewer
-// than the package declares — a site whose chrome is English-only, say.
-//
-// A record may carry more languages than the site offers; its own page reads
-// those from `useRecordLanguage`, without touching the site language.
+// The gallery's own UI languages (`thg_gallery_lang`, declared by the package
+// as `site.languages`), kept where the item translations actually carry them.
+// An item sheet may offer more — whatever languages the record itself carries
+// — from its own switcher, without touching the site language.
 const languages = offeredLanguages()
 
-// Every route names the section it belongs to and the entities its own view
-// reads on top of that; this website has no chrome entities every page loads
-// regardless, so `sectionMeta()` takes none.
-const meta = sectionMeta()
+// Every page renders the chrome — the header title, the banner and its
+// caption — off these four; a page adds what it reads on top. A route also
+// says which section it belongs to, and the shell reads that for the banner
+// title and the active menu entry (viewer-core's `useSection`).
+const CHROME = ['gallery', 'items', 'partners', 'countries']
+const meta = sectionMeta(CHROME)
 
-// The About page: viewer-layout's TextPageView on one body entry and a link
-// back to the landing page — no records, no facets. A second static page
-// (credits, a legal notice) is one more spec and one more route the same way.
-const about = {
-  body: 'ivory.about.body',
-  back: { label: 'core.action.back', to: { name: 'home' } },
+// The banner title over a section page: the section the route declares,
+// named — each name written out for the check. The empty-string key is the
+// router's own catch-all, which carries no `meta.section` at all, so
+// `useSection()` reads it as `''`; legacy still owed that page a banner
+// title, so the fallback lives here rather than nowhere.
+const SECTION_TITLES = {
+  collection: 'gallery.section.collection',
+  database: 'gallery.section.database',
+  partners: 'gallery.section.partners',
+  timeline: 'gallery.section.timeline',
+  about: 'gallery.section.about',
+  credits: 'gallery.section.credits',
+  '': 'gallery.section.error',
 }
 
 export default {
@@ -40,172 +43,174 @@ export default {
   // vite.config.js and the dependency in package.json.
   datasetPackage: '@museumwnf/ivory-data',
 
-  // The website's name, as the package declares it. The fallback is what a
-  // package predating `manifest.site` still shows.
-  siteName: manifest.site?.names?.en ?? 'ivory',
+  // English is the base language of every catalogue in the platform, so the
+  // name the site is known by is the English one.
+  siteName: manifest.site?.names?.en ?? 'Ivory',
 
+  // All pages are website-specific views (below) — no generic entity pages.
   features: {
-    // No generic entity pages. viewer-core can publish one list and one detail
-    // page per exported entity, which is useful for looking at a new dataset
-    // and wrong for a website: those routes expose the data package's shape
-    // rather than the site's. Set `entities: entityNames` from
-    // `useDataPackage()` temporarily while exploring; ship `[]`.
     entities: [],
   },
 
-  // The three slots every website has — the home page, a list page, a record
-  // page — are the composed views of viewer-layout: pages made of the shared
-  // components on the shared engine, driven by the declarations below rather
-  // than by a page written here. `home` is the route `/`; `list` and `detail`
-  // are what `features.entities` would publish, named here so that switching
-  // it on while exploring a dataset shows real pages too. A website whose
-  // page is not that shape writes its own component on the same components,
-  // and registers it on the same route name; nothing else changes.
-  views: { home: HomeView, list: CatalogueResultsView, detail: RecordView },
-
-  // What the landing page shows. Every text is an entry name, written out,
-  // that the view resolves — a translator's file changes the page. The
-  // record on display is one item with an image, picked once per visit.
-  home: {
-    title: 'ivory.identity.title',
-    intro: 'ivory.home.intro',
-    cards: [
-      {
-        title: 'ivory.nav.catalogue',
-        description: 'ivory.home.catalogueText',
-        action: 'core.action.browse',
-        to: { name: 'catalogue' },
-      },
-    ],
-    featured: {
-      entity: 'items',
-      heading: 'ivory.home.itemOnDisplay',
-      action: 'core.action.viewDetails',
-      route: 'item',
-      eyebrow: 'type',
-      meta: ['location', 'dates'],
-    },
-  },
-
-  // The site language. One per visit, negotiated once by viewer-core: an
-  // explicit `?lang=`, then the remembered choice, then the browser, then
-  // English.
   languages,
 
   shell: SiteShell,
 
-  // Everything @museumwnf/viewer-layout's SiteShell reads to build the menu,
-  // the language switcher, the header/footer link lists and the search
-  // submit — see its README, "Site shell". A label is an entry name, resolved
-  // by SiteShell itself (it installs the catalogue), so nothing here builds
-  // menu markup by hand any more.
+  // The layout's `SiteShell` (mounted from src/SiteShell.vue) reads this
+  // instead of a shell rebuilding it: the switcher's labels (from the
+  // package, not a translator), the menu — legacy's five site sections, each
+  // entry's `section` the same string its own route's `meta.section` carries,
+  // so the active one follows `useSection()` — the portal's My Collection
+  // link (no section: it never highlights), the header/footer link lists,
+  // the section-title map the banner falls back to, and the header search
+  // box's target.
   navigation: {
     languages: languageLabels(languages),
     links: [
-      { section: 'home', label: 'core.nav.home', to: { name: 'home' } },
-      { section: 'catalogue', label: 'ivory.nav.catalogue', to: { name: 'catalogue' } },
-      { section: 'about', label: 'ivory.nav.about', to: { name: 'about' } },
+      { section: 'about', label: 'gallery.nav.about', to: { name: 'about' } },
+      { section: 'collection', label: 'gallery.nav.collection', to: { name: 'collection' } },
+      { section: 'partners', label: 'gallery.nav.partners', to: { name: 'partners' } },
+      { section: 'timeline', label: 'gallery.nav.timeline', to: { name: 'timeline' } },
+      { section: 'credits', label: 'gallery.nav.credits', to: { name: 'credits' } },
+      { label: 'gallery.nav.myCollection', href: mwnfLinks.myCollection, external: true },
     ],
+    headerLinks: [
+      { label: 'core.nav.home', to: { name: 'home' } },
+      { label: 'gallery.nav.allGalleries', href: `${mwnfLinks.galleries}/list/1`, external: true },
+    ],
+    footerLinks: [
+      { label: 'gallery.footer.aboutMwnf', href: mwnfLinks.about, external: true },
+      { label: 'gallery.footer.contact', href: mwnfLinks.contact, external: true },
+      { label: 'gallery.footer.legalNotice', href: mwnfLinks.legalNotice, external: true },
+      { label: 'gallery.footer.credits', href: mwnfLinks.credits, external: true },
+      { label: 'gallery.footer.cookies', href: mwnfLinks.cookies, external: true },
+    ],
+    sectionTitles: SECTION_TITLES,
+    search: { route: 'search-results', key: 'q', placeholder: 'gallery.search.placeholder', submitLabel: 'catalogue.search.submit', empty: 'all-objects' },
   },
 
-  // Where this website's media lives. `mediaUrl(path, size)` builds an address
-  // from a path the data package carries; no view reads `import.meta.env` and
-  // no host is written anywhere but here.
+  // The banner: `variant`, `eyebrow` and `enter` depend only on the section,
+  // so `SiteShell` derives them here; the image and the caption depend on
+  // the loaded gallery record, which no config function can read, so
+  // src/SiteShell.vue still passes those two straight through.
+  banner: {
+    variant: ({ section }) => (section === 'home' ? 'strip' : 'section'),
+    eyebrow: ({ section, t }) => (section === 'home' ? t('gallery.banner.discoverGalleries') : ''),
+    captionLabel: 'gallery.banner.detailFrom',
+    enter: ({ section, t }) => (section === 'home'
+      ? { label: '»', href: '#/collection', ariaLabel: t('gallery.action.goToCollection') }
+      : null),
+  },
+
+  // Gallery chrome images live on the legacy media server and were never
+  // imported; the package ships the path, this is the host.
   media: {
     legacyHost: 'https://images.museumwnf.org',
   },
 
-  // Every address this website links out to, by name. `mwnfLinks` is the
-  // portal and its siblings every website links to; a website adds to it
-  // rather than copying it (`links: { ...mwnfLinks, ownPage: '...' }`).
-  links: mwnfLinks,
+  // Every address this website links out to — the twelve portal and sibling
+  // addresses every DXA config repeats, ivory adding none of its own.
+  links: { ...mwnfLinks },
 
-  // The route map. Every route is named, sections are kebab-case, the page
-  // and every filter live in the query, and each route says which section it
-  // belongs to (the shell reads `useSection()` for the banner and the menu).
-  // Each route declares the entities its view reads, so the router loads them
-  // before the view is created and no page renders against records that are
-  // not there yet.
-  //
-  // The 'home' name is the slot `views.home` fills. The routes below are the
-  // results page, the record page and the About page on the composed views,
-  // each driven by a spec passed as route props: the catalogue spec says what
-  // the list filters on and how a row looks, the sheet spec says which fields
-  // a record shows under which labels, and the about spec is one body entry.
-  //
-  // A gallery or exhibition website does not write its platform pages here at
-  // all: `@museumwnf/viewer-layout/dxa` exports them already composed and
-  // confirmed byte-identical within their family's own site pair, and
-  // `standardRoutes(family, config)` returns them as ready-made route
-  // entries. Such a website spreads `...standardRoutes('<family>', config)`
-  // first in `extraViews`, keeping only its own routes after it — home, item
-  // and the entrances into the collection, the timeline and the partners
-  // section, which stay the website's own because they read this dataset's
-  // shape rather than the shape the factory already covers. Route names and
-  // paths are pinned inside the factory to what every DXA site already
-  // registers, so a deep link or a `legacyRoutes` entry targeting one of them
-  // keeps resolving unmodified — never redeclare one of those names or paths
-  // here. This scaffold is `standalone`, which has no standard routes: the
-  // examples below stay commented out on purpose, and a `standalone` build
-  // must never carry a live import of the DXA entry point.
-  //
-  // A gallery website:
-  //
-  //   import { standardRoutes } from '@museumwnf/viewer-layout/dxa'
-  //
-  //   extraViews: [
-  //     ...standardRoutes('gallery', { creditsBody: 'ivory.credits.body' }),
-  //     // + this website's own routes: home, item, collection entrance,
-  //     // timeline entrance, partners entrance
-  //   ]
-  //
-  // An exhibition website:
-  //
-  //   import { standardRoutes } from '@museumwnf/viewer-layout/dxa'
-  //
-  //   extraViews: [
-  //     ...standardRoutes('exhibition', {
-  //       partnerObjects: {
-  //         emptyPartner: 'ivory.partnerObjects.emptyPartner',
-  //         emptyInstitution: 'ivory.partnerObjects.emptyInstitution',
-  //         institutionSummary: 'ivory.partner.monumentsInExhibition',
-  //         partnerProfileLabel: 'ivory.partnerObjects.partnerProfile',
-  //         institutionProfileLabel: 'ivory.partnerObjects.institutionProfile',
-  //       },
-  //     }),
-  //     // + this website's own routes: home, item, collection entrance,
-  //     // timeline entrance, partners entrance
-  //   ]
+  // The source-database chip's colour, per project (epic #1727 phase 4):
+  // one entry for every project id `npm pack @museumwnf/ivory-data` carries
+  // in `manifest.projects` (checked 2026-09-22, ivory-data 1.0.1 — 5 projects,
+  // no Galleries/EXH entries since ivory borrows from none of those). The
+  // class names are `@museumwnf/viewer-layout`'s own fixed chip palette
+  // (`.mwnf-chip--<name>`, themed by its `--mwnf-project-<name>` tokens) —
+  // this site just says which project gets which one, by id, instead of
+  // computing it from a legacy project key at runtime. Comments name the
+  // project the way the manifest itself does (`manifest.projects[id].name.en`).
+  projectColors: {
+    '61c122ac-ea86-5462-8bab-6b86138c49b2': 'mwnf-chip--ISLandEPM', // Discover Islamic Art
+    '928f5e0d-53e3-5f53-b9c2-5af389c30dd4': 'mwnf-chip--ISLandEPM', // Explore Islamic Art Collections — shares Discover Islamic Art's colour
+    '76eaf6c2-8025-53bc-9e39-106803a3917e': 'mwnf-chip--DBA', // Discover Baroque Art
+    '0f031e22-6dc6-5ce6-b94b-9bb88345140c': 'mwnf-chip--AWE', // Sharing History - Arab-Ottoman-European relations in the 19th century.
+    'dcf7b4d2-03c8-568a-8209-2817950fe05e': 'mwnf-chip--DCA', // Discover Carpet Art
+  },
+
+  // The "this item has been added within ..." notice on the item sheet
+  // (legacy's EPM-only note): the project id(s) it applies to, this site's
+  // own editorial choice, not a literal legacy key check. Every DXA gallery
+  // shares this list by construction — all borrow from the same Explore
+  // Islamic Art Collections project.
+  noticeProjects: ['928f5e0d-53e3-5f53-b9c2-5af389c30dd4'], // Explore Islamic Art Collections
+
+  // The absolute origin this build is deployed at (base path included),
+  // read by viewer-core's `sourceUrl()` for the layout's `SourceCredit` (the
+  // item sheet, the partner profile) — the item sheet's own citation stays
+  // without a permalink (composables/gallery.js's `citation.permalink: false`,
+  // legacy's DXA sheets never carried one). The GitHub Pages address until
+  // the domain is decided — the same host and base path vite.config.js's
+  // `base` serves the build under — so it changes together with the domain.
+  site: { origin: 'https://museumwithnofrontiers.github.io/ivory' },
+
+  // The canonical routes, one view per page: a section is `/<section>`, a
+  // record `/<section>/:id` with the package id, and the language, the page
+  // and every filter travel in the query. The 'home' name replaces
+  // viewer-core's generic home route.
   extraViews: [
-    {
-      path: '/catalogue',
-      name: 'catalogue',
-      component: CatalogueResultsView,
-      props: { spec: catalogue },
-      meta: meta('catalogue', 'items', 'countries'),
-    },
+    { path: '/', name: 'home', component: () => import('./views/Home.vue'), meta: meta('home') },
     {
       path: '/item/:id',
       name: 'item',
-      component: RecordView,
-      props: (route) => ({ spec: sheet, id: route.params.id }),
-      meta: meta('catalogue', 'items', 'countries', 'partners'),
+      component: () => import('./views/ItemSheet.vue'),
+      props: (route) => ({ id: route.params.id }),
+      meta: meta('database', 'languages', 'dynasties', 'glossary', 'timelines', 'timeline_events'),
     },
-    {
-      path: '/about',
-      name: 'about',
-      component: TextPageView,
-      props: { spec: about },
-      meta: meta('about'),
-    },
+    { path: '/timeline', name: 'timeline', component: () => import('./views/Timeline.vue'), meta: meta('timeline', 'timelines', 'timeline_events') },
+    // Every other page (about/credits/partners/search/collection/timeline
+    // results/gallery) is byte-identical to carpets' own on `origin/main`
+    // (epic inventory-app#1731) — the package's shared gallery pages, spread
+    // in with this site's one genuine per-site string (`Credits.vue`'s
+    // `body` entry name).
+    ...standardRoutes('gallery', { creditsBody: 'ivory.credits.body' }),
   ],
 
-  // Addresses this website was published under before, each resolving onto a
-  // canonical route above. Redirect-only: no view, no second way to reach a
-  // page. A website that has never moved leaves this empty.
-  legacyRoutes: [],
-
-  // The unmatched-address page is viewer-core's, on a catch-all it adds
-  // itself. Pass `notFound: false` to leave it out, or a component to replace
-  // it — do not declare a `/:pathMatch(.*)*` route here.
+  // The legacy URL shapes, redirect-only, so a legacy address pasted after
+  // the `#` still lands on the right page: the item sheet's dbUid path
+  // (`/database-item/mwnf3/objects/EPM/uk/Mus21/41/en`) resolves through
+  // `backward_compatibility`, the partner's country and legacy id through the
+  // partner record; the language segment is dropped, the page number moves
+  // to the query.
+  legacyRoutes: [
+    {
+      path: '/database-item/:uid(.*)/:language',
+      async resolve({ uid }) {
+        await loadEntities(['items'])
+        const item = itemFromUidPath(uid)
+        return item ? { name: 'item', params: { id: item.id } } : null
+      },
+    },
+    {
+      path: '/partner/:country/:id/:language',
+      async resolve({ country, id }) {
+        await loadEntities(['partners'])
+        const partner = partnerFromKey(country, id)
+        return partner ? { name: 'partner', params: { id: partner.id } } : null
+      },
+    },
+    {
+      path: '/partner-objects/:country/:id/:page',
+      async resolve({ country, id, page }) {
+        await loadEntities(['partners'])
+        const partner = partnerFromKey(country, id)
+        if (!partner) return null
+        return { name: 'partner-objects', params: { id: partner.id }, query: Number(page) > 1 ? { page } : {} }
+      },
+    },
+    {
+      path: '/timeline-gallery/:country/:start/:end/:page',
+      resolve({ country, start, end, page }) {
+        const query = { country }
+        // The path segments keep their legacy names; the query they resolve
+        // to carries the platform's own key for a period bound, 'begin'.
+        if (start !== 'any') query.begin = start
+        if (end !== 'any') query.end = end
+        if (Number(page) > 1) query.page = page
+        return { name: 'timeline-gallery', query }
+      },
+    },
+    { path: '/error', resolve: () => null },
+  ],
 }
