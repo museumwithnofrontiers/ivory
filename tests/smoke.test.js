@@ -129,7 +129,7 @@ describe('website smoke test', () => {
     const { app, host } = await mountSite(`#/item/${items[0].id}`)
     await vi.waitFor(() => expect(host.querySelector('.mwnf-sheet__label')).not.toBeNull(), { timeout: 20000 })
     expect(host.querySelector('.mwnf-record')).not.toBeNull()
-    expect(host.querySelector('.languages')).not.toBeNull()
+    expect(host.querySelector('.mwnf-dxa-item__languages')).not.toBeNull()
     expect(host.querySelector('.mwnf-sheet-related')).not.toBeNull()
     // Ivory owns no native project: items[0] is borrowed from Discover
     // Baroque Art (ivory-data 1.0.1), so the sheet's own source line reads
@@ -231,7 +231,7 @@ describe('website smoke test', () => {
 
   // The timeline entrance/results and the gallery run on the platform's
   // composed views: the country and period controls, the events list and the
-  // "See gallery" cross-link come from the spec in composables/gallery.js.
+  // "See gallery" cross-link come from the spec in the family data layer.
   it('renders the timeline results on the composed timeline view', async () => {
     const { app, host } = await mountSite('#/timeline-results?country=gr')
     await vi.waitFor(() => expect(host.querySelectorAll('.mwnf-timeline__row').length).toBe(11), { timeout: 20000 })
@@ -282,7 +282,7 @@ describe('website smoke test', () => {
 
   // The partner pages run on the platform's composed views: the grouping,
   // the A-Z toggle, the record's language, the map and the member-items grid
-  // come from the specs in composables/gallery.js.
+  // come from the specs in the family data layer.
   it('renders the partners list on the composed partner-list view', async () => {
     const { app, host } = await mountSite('#/partners')
     await vi.waitFor(() => expect(host.querySelector('.mwnf-partner-list__row')).not.toBeNull(), { timeout: 20000 })
