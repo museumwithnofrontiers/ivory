@@ -16,7 +16,7 @@
     "namespace": "ivory"
   },
   "dependencies": {
-    "@museumwnf/ivory-data": "^1.0.12",
+    "@museumwnf/ivory-data": "^1.0.13",
     "@museumwnf/viewer-core": "^2.10.0",
     "@museumwnf/viewer-i18n": "^6.1.0",
     "@museumwnf/viewer-layout": "^3.10.0",
