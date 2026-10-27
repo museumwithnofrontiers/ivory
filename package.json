@@ -16,10 +16,10 @@
     "namespace": "ivory"
   },
   "dependencies": {
-    "@museumwnf/ivory-data": "^1.0.13",
+    "@museumwnf/ivory-data": "^1.0.14",
     "@museumwnf/viewer-core": "^2.10.0",
-    "@museumwnf/viewer-i18n": "^6.1.0",
-    "@museumwnf/viewer-layout": "^3.10.0",
+    "@museumwnf/viewer-i18n": "^6.2.0",
+    "@museumwnf/viewer-layout": "^3.11.2",
     "vue": "^3.5.0",
     "vue-router": "^5.0.0"
   },
